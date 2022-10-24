@@ -64,7 +64,69 @@ Dockerの使い方で使用する環境と, Dockerの環境構築に参考にな
 ## 4. Dockerの使い方
 本章ではDockerの使い方として, Hello World! イメージとコンテナ, Dockerfile, docker-composeについて説明する. 
 ### 4.1 Hello World!
+DockerでHello Worldイメージを取得してコンテナを実行してみる. イメージやコンテナについては次節で説明する. まずDockerを起動して次にコマンドを実行して, Dockerのバージョンを確認する. バージョンが表示されれば, Dockerが起動できている. 
+```
+$ docker --version
+Docker version 20.10.12, build e91ed57
+```
+
+Dockerを起動できていることを確認したら, 次にコマンドを実行してhello-worldする. 「Hello from Docker!」と表示されれば成功である.
+```
+$ docker run hello-world
+Unable to find image 'hello-world:latest' locally
+latest: Pulling from library/hello-world
+2db29710123e: Pull complete 
+Digest: sha256:18a657d0cc1c7d0678a3fbea8b7eb4918bba25968d3e1b0adebfa71caddbc346
+Status: Downloaded newer image for hello-world:latest
+
+Hello from Docker!
+This message shows that your installation appears to be working correctly.
+
+To generate this message, Docker took the following steps:
+ 1. The Docker client contacted the Docker daemon.
+ 2. The Docker daemon pulled the "hello-world" image from the Docker Hub.
+    (amd64)
+ 3. The Docker daemon created a new container from that image which runs the
+    executable that produces the output you are currently reading.
+ 4. The Docker daemon streamed that output to the Docker client, which sent it
+    to your terminal.
+
+To try something more ambitious, you can run an Ubuntu container with:
+ $ docker run -it ubuntu bash
+
+Share images, automate workflows, and more with a free Docker ID:
+ https://hub.docker.com/
+
+For more examples and ideas, visit:
+ https://docs.docker.com/get-started/
+
+```
+
 ### 4.2 イメージとコンテナ
+イメージとコンテナの概念について説明する. イメージは環境のスナップショットとしての役割を持つ[8]. メジャーなソフトウェアや言語, OSのイメージはDockerHubで提供されており参考文献[9]から検索をすることができる. DockerHubで提供されているイメージをローカルにコピーすることをdocker pullという. 試しにUbuntuのDockerイメージをdocker pullしてみる. DockerHubで「ubuntu」と検索をかけると次のようにUbuntuのイメージが提供されていることがわかる. このような公式が提供しているイメージを公式イメージと呼ぶ.
+
+![img](./img/ubuntu-official-image.png)
+
+ubuntuイメージのページにdocker pullコマンドが記述されているので, これをそのまま実行してみる. 
+```
+$ docker pull ubuntu
+Using default tag: latest
+latest: Pulling from library/ubuntu
+cf92e523b49e: Pull complete 
+Digest: sha256:35fb073f9e56eb84041b0745cb714eff0f7b225ea9e024f703cab56aaa5c7720
+Status: Downloaded newer image for ubuntu:latest
+docker.io/library/ubuntu:latest
+```
+
+ubuntuイメージがdocker pullできたか確認する. 次にコマンドを実行するとローカルにあるイメージの一覧が表示される. REPOSITORYがubuntuのものがあればdocker pullが成功している.
+```
+$ docker images
+REPOSITORY             TAG       IMAGE ID       CREATED         SIZE
+ubuntu                 latest    216c552ea5ba   2 weeks ago     77.8MB
+hello-world            latest    feb5d9fea6a5   13 months ago   13.3kB
+```
+
+
 ### 4.3 Dockerfile
 ### 4.4 docker-compose
 ## 参考文献
@@ -86,3 +148,7 @@ atmarkit, 完全なLinuxがWindows 10上で稼働する？　「WSL 2」とは
 [6]Docker Desktop https://www.docker.com/products/docker-desktop/
 
 [7]WSL2 Ubuntu に Docker をインストールする https://zenn.dev/fehde/articles/ea0e8a0a0a1de4
+
+[8]入門Docker https://y-ohgi.com/introduction-docker/2_component/image/
+
+[9]DockerHub https://hub.docker.com/
