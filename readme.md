@@ -103,7 +103,13 @@ For more examples and ideas, visit:
 ```
 
 ### 4.2 イメージとコンテナ
-イメージとコンテナの概念について説明する. イメージは環境のスナップショットとしての役割を持つ[8]. メジャーなソフトウェアや言語, OSのイメージはDockerHubで提供されており参考文献[9]から検索をすることができる. DockerHubで提供されているイメージをローカルにコピーすることをdocker pullという. 試しにUbuntuのDockerイメージをdocker pullしてみる. DockerHubで「ubuntu」と検索をかけると次のようにUbuntuのイメージが提供されていることがわかる. このような公式が提供しているイメージを公式イメージと呼ぶ.
+イメージとコンテナの概念について説明する. イメージは開発環境を作るベースの雛形のようなもので, このイメージを使って実際に開発を行うコンテナを作成する. コンテナはイメージから実際に生成された開発環境であり, 1つのイメージから複数の環境を立てることができる. またここでは紹介しないが, コンテナからイメージに戻して, 新しいイメージを作ることもできる. メジャーなソフトウェアや言語, OSのイメージはDockerHubで提供されており参考文献[8]から検索をすることができる.
+イメージとコンテナの関係は次のような図で表される.
+
+![img](./img/docker-image-container.png)
+
+Ubuntuイメージを取得して, イメージからコンテナを作成してみる.
+DockerHubで提供されているイメージをローカルにコピーすることをdocker pullという. 試しにUbuntuのDockerイメージをdocker pullしてみる. DockerHubで「ubuntu」と検索をかけると次のようにUbuntuのイメージが提供されていることがわかる. このような公式が提供しているイメージを公式イメージと呼ぶ.
 
 ![img](./img/ubuntu-official-image.png)
 
@@ -126,6 +132,85 @@ ubuntu                 latest    216c552ea5ba   2 weeks ago     77.8MB
 hello-world            latest    feb5d9fea6a5   13 months ago   13.3kB
 ```
 
+docker pullしたubuntuイメージを起動して, コンテナを作成する. 次のコマンドを実行するとubutnuイメージからコンテナを作成してbashに入ることができる. コマンドの意味については後で述べる.
+```
+docker run -i -t ubuntu bash
+
+root@7b80b49a78ac:/# cat /etc/issue
+Ubuntu 22.04.1 LTS \n \l
+
+root@7b80b49a78ac:/# exit
+exit
+```
+
+このようにして, DockerHubからイメージを取得して, 開発環境となるコンテナを立てることができた. ここからはイメージからコンテナを生成して開発を行うときに用いるコマンドについて説明する.  
+まず, コンテナの状態確認を行うコマンドであるdocker psについて説明する. 次のコマンドを実行すると実行中のコンテナ一覧を見ることができる. 
+```
+docker ps
+```
+例えばUbuntuコンテナを実行しているときに, docker psコマンドを実行すると次のような出力が得られる. 出力は左からコンテナID, 実行中コマンド, コンテナ生成に使用したイメージ, 生成された時間, コンテナの状態, コンテナ名である. STATUSがUPになっていればコンテナが実行中の状態である.
+```
+$ docker ps
+CONTAINER ID   IMAGE     COMMAND   CREATED          STATUS          PORTS     NAMES
+17d884f94333   ubuntu    "bash"    11 seconds ago   Up 10 seconds             competent_leakey
+```
+
+-aオプションをつけることで状態に関わらず, ローカル環境に保有している全てのコンテナを確認することができる.  
+```
+$ docker ps -a
+CONTAINER ID   IMAGE                  COMMAND                  CREATED          STATUS                       PORTS                                       NAMES
+af0cd66863c5   ubuntu                 "bash"                   10 seconds ago   Up 9 seconds                                                             keen_cartwright
+2b7fae17c714   hello-world            "/hello"                 7 days ago       Exited (0) 7 days ago                                                    confident_cannon
+```
+
+次に, docker runコマンドの詳細について説明する. オプションを考えなくてもなんとなく実行できるでしょう～？という人向けに, 最初にあるあるの失敗をやっておく. 次のコマンドを実行してubuntuイメージからubuntuコンテナを生成できるか試してみる. ubuntuコンテナのbashが帰ってくるんでしょ？とウキウキして実行すると, 何も起きなかったかのように通常のbashが帰ってくる. docker ps -aでコンテナ状態を確認すると, 確かにコンテナが生成された記録があるが, exit状態になっている. 実はコンテナはプロセスを実行するためのものであるため, Root Processと呼ばれるプロセスが終了すると, プロセスも終了するようになっている. 今の失敗例ではコンテナのRoot Processとしてubuntuのbashが立ち上がるが, 標準入力もターミナルも設定していないためすぐにbashが終了する. このためコンテナが生成された記憶があるが, 何も起きなかったように見えるのである.
+```
+$ docker run ubuntu
+```
+
+では初めにubuntuコンテナを生成したときは何故bashがすぐに終了しなかったのだろうか? その答えが-i -tというオプションである. オプション内容は後述するがdocker runでコマンドを間違えると起動しない！接続できない！ということがよくある. そんなときはまずdocker runコマンドを確認してみよう.  
+いよいよ本題のdocker runコマンドのオプションについて説明する. まず-i, -tオプションについて説明する. -iはコンテナに標準入力をアタッチすることを意味する. -tはコンテナにターミナルをアタッチする(ttyを利用する)ことを意味する. この2つのオプションを用いて次のコマンドを実行すると, ubuntuコマンドに標準入力とターミナルがアタッチされてubuntuのbashが返ってくる. -iと-tはよく一緒に使うため-itと記述することが多い.
+```
+docker run -i -t ubuntu
+```
+
+次に--rmオプションについて説明する. このオプションはコンテナの終了時にコンテナを削除するというオプションである. 一時的に何かの環境をテストして, それが終わったら跡形もなくコンテナを削除するときに用いる. --rmオプションなしでdocker run ubuntuコマンドを実行すると, その都度実行したコンテナが残るが次のコマンドを実行するとコンテナ終了時にコンテナが削除される.
+```
+docker run --rm -it ubuntu
+```
+
+--nameオプションについて説明する. --nameオプションなしでdocker runを実行した場合, keen_cartwrightやconfident_cannonのようなランダムな名前がコンテナに割り当てられる. 同じイメージから複数のコンテナを立てるような環境構築が必要な場合や, バージョンを分けたい場合, 開発用とデプロイ用でコンテナを分ける場合にはコンテナ名を割り振っておくとわかりやすい. そこで--nameオプションを次のように用いる. この例では生成したubuntuコンテナにdev_ubuntuという名前をつけている.
+```
+docker run --rm -it --name dev_ubuntu ubuntu
+```
+
+-dオプションについて説明する. -dオプションはコンテナを作成した後, Root Processの標準入出力からデタッチするオプションである. -itオプションでRoot Processに標準入出力をアタッチすると, デタッチは行われていないためコンテナのプロンプトが返ってくる. 一方で-dオプションをつけた場合はRoot Processに標準入出力をアタッチした後でデタッチが行われるためホストのプロンプトが返ってくる.  
+このほかポート番号を設定するコマンドや, リソースを制限するコマンドを代表とする多くのオプションがある. 必要な時に参考文献[9]を参照してほしい.
+
+最後に生成したコンテナを停止・再起動・削除する方法とイメージを削除する方法について説明する. コンテナやイメージのライフサイクルに関するコマンドは次図のようになっている.
+
+![img](./img/docker-lifecycle.png)
+
+docker runコマンドで新規にコンテナを生成して, 実行している状態であるとする.
+```
+$ docker run -d -it --name dev_ubuntu ubuntu
+``` 
+この状態でdockerコンテナを停止したいときは次のコマンドを実行する. すなわちdocker stopコマンドで停止したいコンテナ名もしくはコンテナIDを指定することでコンテナを停止できる.
+```
+docker stop dev_ubuntu
+```
+1回生成したコンテナは次のコマンドで再起動することができる. docker startコマンドで再起動したいコンテナ名もしくはコンテナIDを指定する.
+```
+docker start dev_ubuntu
+```
+コンテナが不要になった場合には, 次のコマンドでコンテナを削除できる. 
+```
+docker rm dev_ubuntu
+```
+イメージが不要になった場合は次のコマンドでイメージを削除できる. 削除したいイメージから生成されたコンテナがある場合にはエラーになるためコンテナを先に削除すること.
+```
+docker rmi ubuntu
+```
 
 ### 4.3 Dockerfile
 ### 4.4 docker-compose
@@ -149,6 +234,6 @@ atmarkit, 完全なLinuxがWindows 10上で稼働する？　「WSL 2」とは
 
 [7]WSL2 Ubuntu に Docker をインストールする https://zenn.dev/fehde/articles/ea0e8a0a0a1de4
 
-[8]入門Docker https://y-ohgi.com/introduction-docker/2_component/image/
+[8]DockerHub https://hub.docker.com/
 
-[9]DockerHub https://hub.docker.com/
+[0]Docker run リファレンス  https://docs.docker.jp/engine/reference/run.html#env
