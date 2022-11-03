@@ -338,17 +338,17 @@ Package                      Version
 matplotlib                   3.5.1
 numpy                        1.22.2
 pandas                       1.4.1
-
+```
 gitがインストールされていることも確認しておく. 次のコマンドを実行する. 確かにapt installが実行されていることが確認できた.
+
 ```
 root@c5aeecb78ce3:/dev# git --version
 git version 2.25.1
-```
-
 WARNING: You are using pip version 22.0.3; however, version 22.3 is available.
 You should consider upgrading via the '/usr/bin/python3 -m pip install --upgrade pip' command.
 root@c5aeecb78ce3:/dev# 
 ```
+
 このように, 公式イメージをベースイメージとして自分のやりたいことにあった環境をDockerfileを用いて構築することができる. この部分については実際に手を動かして自分好み, または必要な環境構築を行ってみてほしい.
 
 <div id="4.4">
