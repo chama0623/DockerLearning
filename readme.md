@@ -213,7 +213,128 @@ docker rmi ubuntu
 ```
 
 ### 4.3 Dockerfile
+前節では公式イメージからコンテナを生成して開発環境を構築する方法について説明した. 本節では公式イメージをカスタムして, 自分の要望にあった開発環境を構築する方法について説明する.  
+Pythonで開発を行うことを考えてみる. このとき開発環境を構築する過程で次のような操作を行うことがあるだろう.
+
+- apt updateやinstallを行う
+- pipでライブラリをインストールする
+- 開発に用いるディレクトリ・ファイルを構成する.
+- ホストのファイルをコンテナに送信する.
+- 構築したコンテナのPythonインタプリタで作業を行う.
+
+これらの作業をDockerfileと呼ばれるものに記述して, そのDockerfileを実行するとカスタムされたイメージを作成することができる. 先のpythonの例でDockerfileを作成してみる. ここで作成するDockerfileおよびコンテナ構築に必要なファイルは/src/dev_pythonに設置してある. ここでは次の要件を満たす環境を構築する.
+- apt updateが行われている.
+- python3.8が動作する.
+- 作業ディレクトリが/devである.
+- numpy, pandas, matplotlibの3つのライブラリが使える.
+- git, vim, unzipが使える.
+
+これらの要件を満たすようにDockerfileを構成してみる. /src/dev_python/Dockerfileを次に示す. またpip installするライブラリを/src/dev_python/requirements.txtにまとめて記述しておく. Dockerfileの内容について説明する. まずFROMでイメージを作成するためのベースとなるイメージであるベースイメージを記述する. ここではpython3.8とした. 細かいバージョンをpython3.8:latestのように指定することもできる. 次にWORKDIRでコンテナの作業ディレクトリを指定する. docker run -itでコンテナを起動したときにWORKDIRで指定したディレクトリでプロンプトが立ち上がる.  
+RUNコマンドはコンテナ上で実行されるコマンドを記述することができる. pubキーの設定は飛ばしてaptで説明すると, apt updateやapt installがコンテナ上で実行されるということである. ここではapt updateを行った後にgit, vim, unzipをインストールしている. 次にpip installを行う. まずCOPYコマンドでホストのrequirements.txtをコンテナの/tmpにコピーする. COPyコマンドでは「COPY ホストのファイルパス コンテナのファイルパス」のようにしてコピーするファイルを指定する. 次にRUNコマンドでpip installを行っている. コピーしたrequirements.txtに記述されたライブラリをまとめてインストールしている. requirements.txtにはnumpy, pandas, matplotlibの3つが記述されている. Dockerfileの最後にCMDコマンドが記述されている. このコマンドはイメージ作成時に実行されるのではなく, コンテナ実行時に自動実行されるコマンドを指定するためのものである. docker run -it ubuntuを実行したときにbashが返ってきたが, これはCMDで/bin/bashが指定されているためである. ここでも同じように/bin/bashを指定している. もしpythonインタプリタが返って来てほしいような場合はCMD ["python3"]のように記述する.
+
+/src/dev_python/Dockerfile
+```Dockerfile
+# ベースイメージ
+FROM python3.8
+
+# 作業ディレクトリの指定
+# 作業ディレクトリがない場合は生成される
+WORKDIR /dev
+
+# pubキーの追加
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+
+# apt実行
+RUN apt update \
+    && apt install -y \
+    git \
+    vim \
+    unzip
+
+# ホストのファイルをコンテナにコピー
+COPY requirements.txt /tmp/
+
+# pip install実行
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+# CMDはコンテナ生成時ではなくdocker run時に実行される
+CMD ["/bin/bash"]
+```
+
+/src/dev_python/requirements.txt
+```txt
+numpy
+pandas
+matplotlib
+```
+
+/src/dev_pythonでDockerfileを実行してイメージを作成する. 次に示すdocker buildコマンドを実行する. docker buildコマンドはDockerfileのパス, -tオプションでイメージ名を指定している.
+
+```
+$ docker build ./ -t dev_python3.8
+[+] Building 93.4s (12/12) FINISHED                                                                                                                                                                                                    
+ => [internal] load build definition from Dockerfile                                                                                                                                                                              0.0s
+ => => transferring dockerfile: 785B                                                                                                                                                                                              0.0s
+ => [internal] load .dockerignore                                                                                                                                                                                                 0.0s
+ => => transferring context: 2B                                                                                                                                                                                                   0.0s
+ => [internal] load metadata for docker.io/library/python3.8:latest                                                                                                                                                               0.0s
+ => [1/7] FROM docker.io/library/python3.8                                                                                                                                                                                        0.1s
+ => [internal] load build context                                                                                                                                                                                                 0.0s
+ => => transferring context: 66B                                                                                                                                                                                                  0.0s
+ => [2/7] WORKDIR /dev                                                                                                                                                                                                            0.0s
+ => [3/7] RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub                                                                                                    0.8s
+ => [4/7] RUN apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub                                                                                                    0.9s 
+ => [5/7] RUN apt update     && apt install -y     git     vim     unzip                                                                                                                                                         88.7s 
+ => [6/7] COPY requirements.txt /tmp/                                                                                                                                                                                             0.0s 
+ => [7/7] RUN pip install --no-cache-dir -r /tmp/requirements.txt                                                                                                                                                                 2.2s 
+ => exporting to image                                                                                                                                                                                                            0.6s 
+ => => exporting layers                                                                                                                                                                                                           0.5s 
+ => => writing image sha256:933aa0089ddd29c1155c599dff111ca4b81efb08f2d593545e79bec8000f5c73                                                                                                                                      0.0s
+ => => naming to docker.io/library/dev_python3.8  
+```
+
+イメージが作成できたから, コンテナを生成して要件にあった環境構築が行えているか確認する. CMDで/bin/bashを指定したからdocker runコマンドを実行するとbashが返ってくるはずである. 実際に実行してみると確かにbashが返ってきた. さらに起動時のディレクトリが/devになっている. これはWORKDIRで設定した通りになっている.
+```
+$ docker run -it dev_python3.8
+root@c5aeecb78ce3:/dev# 
+```
+
+pythonが起動するか確認する. 次のコマンドを実行する. 確かにpythonが実行できることが確認できた.
+```
+root@c5aeecb78ce3:/dev# python3
+Python 3.8.10 (default, Nov 26 2021, 20:14:08) 
+[GCC 9.3.0] on linux
+Type "help", "copyright", "credits" or "license" for more information.
+>>> print("hello world!")
+hello world!
+>>> exit()
+```
+
+pythonのライブラリがインストールされているか確認する. 次のコマンドを実行する. 必要な部分だけ示すが, 確かにnumpy, pandas, matplotlibがインストールされていることが確認できた.
+```
+root@c5aeecb78ce3:/dev# pip list
+Package                      Version
+---------------------------- -------------------
+matplotlib                   3.5.1
+numpy                        1.22.2
+pandas                       1.4.1
+
+gitがインストールされていることも確認しておく. 次のコマンドを実行する. 確かにapt installが実行されていることが確認できた.
+```
+root@c5aeecb78ce3:/dev# git --version
+git version 2.25.1
+```
+
+WARNING: You are using pip version 22.0.3; however, version 22.3 is available.
+You should consider upgrading via the '/usr/bin/python3 -m pip install --upgrade pip' command.
+root@c5aeecb78ce3:/dev# 
+```
+このように, 公式イメージをベースイメージとして自分のやりたいことにあった環境をDockerfileを用いて構築することができる. この部分については実際に手を動かして自分好み, または必要な環境構築を行ってみてほしい.
+
 ### 4.4 docker-compose
+工事中
+
 ## 参考文献
 
 [1]アイティーエム, 仮想化技術について解説ホスト・ハイパーバイザー・コンテナの違いとは？  
